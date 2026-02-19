@@ -5,76 +5,93 @@ import schedule
 import time
 import os
 import logging
+from datetime import datetime
 
 # --- KONFIGURASI ---
-# Kita ambil token rahasia dari Environment Variable (Settingan Docker nanti)
 TOKEN = os.getenv('BOT_TOKEN')
 CHAT_ID = os.getenv('CHAT_ID')
-URL_TARGET = "https://www.ultimate-guitar.com/explore?order=hitstotal_desc&type=Chords"
+
+# Sumber Data: Spotify Daily Chart - Indonesia (Data Real-time)
+URL_TARGET = "https://kworb.net/spotify/country/id_daily.html"
 
 # Setup Bot & Logging
 bot = telebot.TeleBot(TOKEN)
 logging.basicConfig(level=logging.INFO)
 
-def get_trending_tabs():
-    logging.info("Sedang mencari lagu trending...")
+def get_indo_trends():
+    logging.info("Sedang memantau tangga lagu Indonesia...")
     
-    # Header palsu biar dikira browser beneran (bukan bot)
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     }
     
     try:
         response = requests.get(URL_TARGET, headers=headers)
         if response.status_code != 200:
-            return "Gagal akses website Ultimate-Guitar :("
+            return "⚠️ Gagal akses data Spotify Indonesia."
             
         soup = BeautifulSoup(response.text, 'html.parser')
         
-        # Mencari data lagu (Disclaimer: Class ini bisa berubah sewaktu-waktu kalau web update)
-        # Kita coba ambil teks kasar dulu karena UG pakai banyak JavaScript
-        # Untuk versi simpel, kita scraping meta description atau title halaman yang sering berisi top songs
-        # Atau opsi lain: Scraping Billboard charts yang lebih statis HTML-nya.
+        # Kworb menggunakan tabel simpel, kita ambil tabel pertama
+        table = soup.find('table')
+        rows = table.find_all('tr')
         
-        # OPSI ALTERNATIF LEBIH STABIL: Billboard Hot 100
-        url_billboard = "https://www.billboard.com/charts/hot-100/"
-        resp_bb = requests.get(url_billboard, headers=headers)
-        soup_bb = BeautifulSoup(resp_bb.text, 'html.parser')
+        # Header Pesan
+        date_now = datetime.now().strftime("%d-%m-%Y")
+        msg = f"🇮🇩 **TOP HITS INDONESIA ({date_now})** 🇮🇩\n"
+        msg += "Ide Konten Gitar Viral Hari Ini:\n\n"
         
-        songs = soup_bb.select('li.o-chart-results-list__item h3.c-title')
-        artists = soup_bb.select('li.o-chart-results-list__item span.c-label')
-        
-        msg = "🎸 **IDE KONTEN TIKTOK HARI INI** 🎸\n\n"
-        msg += "Top 5 Lagu Billboard (Cek Chord-nya!):\n"
-        
-        for i in range(5): # Ambil 5 teratas
-            try:
-                title = songs[i].text.strip()
-                # Artist selector di Billboard agak tricky, kita ambil title dulu yang utama
-                msg += f"{i+1}. {title}\n"
-            except:
+        count = 0
+        # Kita skip row 0 karena itu header tabel
+        for row in rows[1:]:
+            if count >= 10: # Ambil Top 10 saja
+                break
+                
+            cols = row.find_all('td')
+            if not cols:
                 continue
                 
-        msg += "\nGas rekam bang! 📹"
+            # Struktur kolom Kworb: [Pos] [P+] [Artist and Title] ...
+            # Kolom ke-2 (index 2) biasanya Artist and Title
+            song_info = cols[2].text.strip()
+            
+            # Cek apakah lagu ini sedang NAIK (Hijau) di chart?
+            # Biasanya ada indikator warna di HTML, tapi kita ambil simpelnya aja
+            
+            # Format: "Artist - Title"
+            # Kita bersihkan sedikit stringnya
+            if " - " in song_info:
+                artist, title = song_info.split(" - ", 1)
+                display_text = f"🎸 {title} - {artist}"
+            else:
+                display_text = f"🎵 {song_info}"
+            
+            count += 1
+            msg += f"{count}. {display_text}\n"
+            
+        msg += "\n💡 *Tips:* Cek chord-nya di Ultimate-Guitar/ChordTela dan sikat bikin konten!"
         return msg
 
     except Exception as e:
         return f"Error scraping: {str(e)}"
 
 def job():
-    pesan = get_trending_tabs()
-    bot.send_message(CHAT_ID, pesan)
-    logging.info("Laporan terkirim!")
+    pesan = get_indo_trends()
+    try:
+        bot.send_message(CHAT_ID, pesan, parse_mode='Markdown')
+        logging.info("Laporan sukses terkirim!")
+    except Exception as e:
+        logging.error(f"Gagal kirim Telegram: {e}")
 
 # --- JADWAL KERJA ---
-# Atur jam pengiriman (Format 24 jam Server Azure - biasanya UTC)
-# Kalau WIB jam 08:00 pagi, berarti UTC jam 01:00 pagi.
+# Kirim setiap jam 08:00 Pagi WIB (Server Azure biasanya UTC, jadi set jam 01:00 UTC)
 schedule.every().day.at("01:00").do(job)
 
-logging.info("Bot Trend Hunter Berjalan! Menunggu jadwal...")
+logging.info("Bot Trend Hunter V2 (Indo Edition) Berjalan!")
 
-# Kirim pesan "Saya Hidup" pas pertama kali jalan
-bot.send_message(CHAT_ID, "🤖 Bot Trend Hunter Siap! Laporan akan dikirim tiap pagi jam 08:00 WIB.")
+# Test kirim pesan saat bot baru nyala (Biar tau codingan baru jalan)
+first_run_msg = get_indo_trends()
+bot.send_message(CHAT_ID, f"🤖 **Bot Upgrade V2 Berhasil!**\nIni tes data terbaru:\n\n{first_run_msg}")
 
 while True:
     schedule.run_pending()
