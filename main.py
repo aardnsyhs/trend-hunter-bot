@@ -91,7 +91,7 @@ def job():
     else:
         bot.send_message(CHAT_ID, "⚠️ Gagal mengambil data lagu viral.")
 
-schedule.every().day.at("10:00").do(job)
+schedule.every().day.at("17:00").do(job)
 
 logging.info("Bot Juragan Chord (Fix Google Link) Berjalan!")
 bot.send_message(CHAT_ID, "🤖 Bot Juragan Chord (Versi Google) Siap! Nunggu jam 5 sore.")
