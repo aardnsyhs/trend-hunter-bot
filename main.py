@@ -5,98 +5,57 @@ import schedule
 import time
 import os
 import logging
-import random
-import tweepy
 from datetime import datetime
 
-TELEGRAM_TOKEN = os.getenv('BOT_TOKEN')
+TOKEN = os.getenv('BOT_TOKEN')
 CHAT_ID = os.getenv('CHAT_ID')
+URL_TARGET = "https://kworb.net/spotify/country/id_daily.html"
 
-TWITTER_API_KEY = os.getenv('TWITTER_API_KEY')
-TWITTER_API_SECRET = os.getenv('TWITTER_API_SECRET')
-TWITTER_ACCESS_TOKEN = os.getenv('TWITTER_ACCESS_TOKEN')
-TWITTER_ACCESS_SECRET = os.getenv('TWITTER_ACCESS_SECRET')
-
-TIPTAP_LINK = "https://tiptap.gg/aardnsyhs"
-
-bot = telebot.TeleBot(TELEGRAM_TOKEN)
+bot = telebot.TeleBot(TOKEN)
 logging.basicConfig(level=logging.INFO)
 
-def post_to_twitter(tweet_text):
+def get_indo_trends():
+    logging.info("Sedang memantau tangga lagu Indonesia...")
     try:
-        client = tweepy.Client(
-            consumer_key=TWITTER_API_KEY,
-            consumer_secret=TWITTER_API_SECRET,
-            access_token=TWITTER_ACCESS_TOKEN,
-            access_token_secret=TWITTER_ACCESS_SECRET
-        )
-        
-        response = client.create_tweet(text=tweet_text)
-        return f"✅ Sukses Tweet ID: {response.data['id']}"
-    except Exception as e:
-        return f"❌ Gagal Tweet: {e}"
-
-def get_viral_chord():
-    logging.info("Mencari lagu viral...")
-    url = "https://kworb.net/spotify/country/id_daily.html"
-    
-    try:
-        response = requests.get(url, headers={"User-Agent": "Mozilla/5.0"})
+        response = requests.get(URL_TARGET, headers={"User-Agent": "Mozilla/5.0"})
+        if response.status_code != 200: return "⚠️ Gagal akses data."
+            
         soup = BeautifulSoup(response.text, 'html.parser')
         rows = soup.find('table').find_all('tr')
         
-        top_songs = []
+        date_now = datetime.now().strftime("%d-%m-%Y")
+        msg = f"🇮🇩 <b>TOP HITS INDONESIA ({date_now})</b> 🇮🇩\n\n"
+        
         count = 0
         for row in rows[1:]:
             if count >= 10: break
             cols = row.find_all('td')
             if not cols: continue
-            
             song_info = cols[2].text.strip()
+            
             if " - " in song_info:
                 artist, title = song_info.split(" - ", 1)
+                display_text = f"🎸 <b>{title}</b> - {artist}"
             else:
-                artist = "Unknown"
-                title = song_info
-                
-            top_songs.append({"title": title, "artist": artist})
-            count += 1
+                display_text = f"🎵 {song_info}"
             
-        chosen_song = random.choice(top_songs)
-        
-        query_google = f"Chord {chosen_song['title']} {chosen_song['artist']} ChordTela"
-        
-        search_url = f"https://www.google.com/search?q={query_google.replace(' ', '+')}"
-        
-        tweet = f"🎸 Chord Viral Hari Ini: {chosen_song['title']}\n"
-        tweet += f"🎤 Artis: {chosen_song['artist']}\n\n"
-        tweet += f"Cek kunci gitarnya (Versi Gampang) 👇\n"
-        tweet += f"{search_url}\n\n"
-        tweet += f"☕ Dukung admin beli senar: {TIPTAP_LINK}\n"
-        tweet += "#ChordGitar #GitarisIndonesia #InfoMusik"
-        
-        return tweet
-
+            count += 1
+            msg += f"{count}. {display_text}\n"
+            
+        msg += "\n💡 <i>Data diambil otomatis dari Server Azure.</i>"
+        return msg
     except Exception as e:
-        return None
+        return f"Error: {str(e)}"
 
 def job():
-    konten_tweet = get_viral_chord()
-    
-    if konten_tweet:
-        status_twitter = post_to_twitter(konten_tweet)
-        
-        laporan = f"🤖 **Laporan Bot Chord**\n\n{status_twitter}\n\nIsi Tweet:\n{konten_tweet}"
-        bot.send_message(CHAT_ID, laporan)
-    else:
-        bot.send_message(CHAT_ID, "⚠️ Gagal mengambil data lagu viral.")
+    pesan = get_indo_trends()
+    bot.send_message(CHAT_ID, pesan, parse_mode='HTML')
+    logging.info("Laporan sukses terkirim ke Telegram!")
 
-schedule.every().day.at("17:00").do(job)
+schedule.every().day.at("07:30").do(job)
 
-logging.info("Bot Juragan Chord (Fix Google Link) Berjalan!")
-bot.send_message(CHAT_ID, "🤖 Bot Juragan Chord (Versi Google) Siap! Nunggu jam 5 sore.")
-
-job()
+logging.info("Bot Telegram Only Berjalan!")
+bot.send_message(CHAT_ID, "✅ Bot kembali ke mode Telegram (Twitter dimatikan).")
 
 while True:
     schedule.run_pending()
