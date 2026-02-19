@@ -64,12 +64,13 @@ def get_viral_chord():
             
         chosen_song = random.choice(top_songs)
         
-        search_query = f"{chosen_song['title']} {chosen_song['artist']} chords"
-        search_url = f"https://www.ultimate-guitar.com/search.php?search_type=title&value={search_query.replace(' ', '+')}"
+        query_google = f"Chord {chosen_song['title']} {chosen_song['artist']} ChordTela"
+        
+        search_url = f"https://www.google.com/search?q={query_google.replace(' ', '+')}"
         
         tweet = f"🎸 Chord Viral Hari Ini: {chosen_song['title']}\n"
         tweet += f"🎤 Artis: {chosen_song['artist']}\n\n"
-        tweet += f"Mau mainin lagu ini? Cek kunci gitarnya disini 👇\n"
+        tweet += f"Cek kunci gitarnya (Versi Gampang) 👇\n"
         tweet += f"{search_url}\n\n"
         tweet += f"☕ Dukung admin beli senar: {TIPTAP_LINK}\n"
         tweet += "#ChordGitar #GitarisIndonesia #InfoMusik"
@@ -92,8 +93,8 @@ def job():
 
 schedule.every().day.at("10:00").do(job)
 
-logging.info("Bot Juragan Chord (Twitter) Berjalan!")
-bot.send_message(CHAT_ID, "🤖 Bot Juragan Chord Siap! Nunggu jam 5 sore buat nge-tweet.")
+logging.info("Bot Juragan Chord (Fix Google Link) Berjalan!")
+bot.send_message(CHAT_ID, "🤖 Bot Juragan Chord (Versi Google) Siap! Nunggu jam 5 sore.")
 
 while True:
     schedule.run_pending()
