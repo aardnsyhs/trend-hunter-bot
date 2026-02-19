@@ -17,7 +17,7 @@ TWITTER_API_SECRET = os.getenv('TWITTER_API_SECRET')
 TWITTER_ACCESS_TOKEN = os.getenv('TWITTER_ACCESS_TOKEN')
 TWITTER_ACCESS_SECRET = os.getenv('TWITTER_ACCESS_SECRET')
 
-SAWERIA_LINK = "https://saweria.co/USERNAME_KAMU"
+TIPTAP_LINK = "https://tiptap.gg/aardnsyhs"
 
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 logging.basicConfig(level=logging.INFO)
@@ -71,7 +71,7 @@ def get_viral_chord():
         tweet += f"🎤 Artis: {chosen_song['artist']}\n\n"
         tweet += f"Mau mainin lagu ini? Cek kunci gitarnya disini 👇\n"
         tweet += f"{search_url}\n\n"
-        tweet += f"☕ Dukung admin beli senar: {SAWERIA_LINK}\n"
+        tweet += f"☕ Dukung admin beli senar: {TIPTAP_LINK}\n"
         tweet += "#ChordGitar #GitarisIndonesia #InfoMusik"
         
         return tweet
